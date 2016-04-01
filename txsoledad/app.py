@@ -12,9 +12,9 @@ TO-DO:
 """
 from klein import Klein
 
-from .resources import Global, Database, AllDocs
-from .resources import Documents, Document, Sync
-from .state import ServerState
+from resources import Global, Database, AllDocs
+from resources import Documents, Document, Sync
+from state import ServerState
 
 
 GET = 'GET'
@@ -45,18 +45,21 @@ class HTTPApp(Global, Database, AllDocs, Documents, Document, Sync):
         return self._info(request)
 
     # Database resource
+    # XXX soledad SHOULDNT have privileges to modify databases,
+    # but getting this here for API completion. It might be useful during
+    # tests.
 
     @app.route(DB_RESOURCE_URI, methods=[GET])
     def create_database(self, request, dbname):
         return self._create_database(request, dbname)
 
-    @app.route(DB_RESOURCE_URI, methods=[PUT])
-    def update_database(self, request, dbname):
-        return self._update_database(request, dbname)
-
     @app.route(DB_RESOURCE_URI, methods=[DELETE])
     def delete_database(self, request, dbname):
         return self._delete_database(request, dbname)
+
+    @app.route(DB_RESOURCE_URI, methods=[PUT])
+    def update_database(self, request, dbname):
+        return self._update_database(request, dbname)
 
     # Documents resource
 

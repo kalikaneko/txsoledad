@@ -35,16 +35,21 @@ class Global(object):
 class Database(object):
 
     def _create_database(self, request, dbname):
-        def createdCb(ignored):
-            response = {'created': 'ok'}
-            return json.dumps(response)
-
         _set_json_ctype(request)
         d = self.state.db.createDB(dbname)
-        d.addCallback(createdCb)
+        d.addCallback(_successCb, 'created')
+        d.addErrback(_failureEb, 'created')
         return d
 
-    # TODO
+    def _delete_database(self, request, dbname):
+        _set_json_ctype(request)
+        d = self.state.db.deleteDB(dbname)
+        d.addCallback(_successCb, 'deleted')
+        d.addErrback(_failureEb, 'deleted')
+        return d
+
+    # TODO -- what is this supposed to do?
+    # I think there's no API in paisley for it.
     def _update_database(self, request, dbname):
         _set_json_ctype(request)
         try:
@@ -54,23 +59,14 @@ class Database(object):
         self._items[dbname] = body
         return json.dumps({'success': 'NOT IMPLEMENTED'})
 
-    # TODO
-    def _delete_database(self, request, dbname):
-        request.setHeader('Content-Type', 'application/json')
-        response = {'deleted': 'NOT IMPLEMENTED'}
-        return json.dumps(response)
-
 
 class AllDocs(object):
 
     def _get_all_docs(self, request, dbname):
-        def get_all_docs_Cb(result):
-            response = {'result': result}
-            return json.dumps(response)
-
         _set_json_ctype(request)
         d = self.state.db.listDoc(dbname)
-        d.addCallback(get_all_docs_Cb)
+        d.addCallback(_successCb, 'all-docs')
+        d.addErrback(_failureEb, 'all-docs')
         return d
 
 
@@ -160,3 +156,14 @@ class Sync(object):
 
 def _set_json_ctype(request):
     request.setHeader('Content-Type', 'application/json')
+
+def _successCb(result, name):
+    print "RESULT", result
+    response = {name: 'ok'}
+    if result:
+        response['result'] = result
+    return json.dumps(response)
+
+def _failureEb(failure, name):
+    response = {name: 'no', 'error': json.loads(failure.value.message)}
+    return json.dumps(response)
