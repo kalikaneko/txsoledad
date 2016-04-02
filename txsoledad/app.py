@@ -45,7 +45,7 @@ class HTTPApp(Global, Database, AllDocs, Documents, Document, Sync):
         return self._info(request)
 
     # Database resource
-    # XXX soledad SHOULDNT have privileges to modify databases,
+    # XXX soledad *SHOULDNT* have privileges to modify databases,
     # but getting this here for API completion. It might be useful during
     # tests.
 

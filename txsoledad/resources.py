@@ -82,13 +82,29 @@ class Documents(object):
 class Document(object):
 
     def _get_doc(self, request, dbname, doc_id):
-        def _get_doc_cb(result):
-            response = {'result': result, 'action': 'GET'}
+
+        def _getdocCb(result):
+            doc = result
+            response = {'get-doc': 'ok', 'result': doc}
+            request.setHeader(
+                'x-u1db-rev', doc.get('rev', ''))
+            request.setHeader(
+                'x-u1db-has-conflicts', doc.get('has_conflicts', '')) 
             return json.dumps(response)
+
+        def _nodocEb(failure):
+            response = {'get-doc': 'no', 'error': json.loads(failure.value.message)}
+            request.setHeader('x-u1db-rev', '')
+            request.setHeader('x-u1db-has-conflicts', 'false')
+            return json.dumps(response)
+
+        include_deleted = _parse_bool(request.args.get('include_deleted'))
+        # TODO is_tombstone?
 
         _set_json_ctype(request)
         d = self.state.db.openDoc(dbname, doc_id)
-        d.addCallback(_get_doc_cb)
+        d.addCallback(_getdocCb)
+        d.addErrback(_nodocEb)
         return d
 
     def _update_doc(self, request, dbname, doc_id):
@@ -158,7 +174,6 @@ def _set_json_ctype(request):
     request.setHeader('Content-Type', 'application/json')
 
 def _successCb(result, name):
-    print "RESULT", result
     response = {name: 'ok'}
     if result:
         response['result'] = result
@@ -167,3 +182,10 @@ def _successCb(result, name):
 def _failureEb(failure, name):
     response = {name: 'no', 'error': json.loads(failure.value.message)}
     return json.dumps(response)
+
+def _parse_bool(items):
+    if items:
+        first = items[0]
+        if first == 'true':
+            return True
+    return False
