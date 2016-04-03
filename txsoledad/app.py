@@ -14,6 +14,8 @@ from klein import Klein
 
 from resources import Global, Database, AllDocs
 from resources import Documents, Document, Sync
+from lock_resource import Lock
+
 from state import ServerState
 
 
@@ -23,7 +25,7 @@ PUT = 'PUT'
 DELETE = 'DELETE'
 
 
-class HTTPApp(Global, Database, AllDocs, Documents, Document, Sync):
+class HTTPApp(Global, Database, AllDocs, Documents, Document, Sync, Lock):
 
     app = Klein()
 
@@ -34,6 +36,7 @@ class HTTPApp(Global, Database, AllDocs, Documents, Document, Sync):
     SYNC_RESOURCE_URI = (
         '/<string:dbname>/sync-from'
         '/<string:source_replica_uid>')
+    LOCK_RESOURCE_URI = '/shared/lock/<string:source_replica_uid>'
 
     def __init__(self):
         self.state = ServerState()
@@ -102,6 +105,16 @@ class HTTPApp(Global, Database, AllDocs, Documents, Document, Sync):
     @app.route(SYNC_RESOURCE_URI, methods=[POST])
     def post_sync(self, request, dbname, source_replica_uid):
         return self._post_sync(request, dbname, source_replica_uid)
+
+    # Lock resource
+
+    @app.route(LOCK_RESOURCE_URI, methods=[PUT])
+    def acquire_lock(self, request, source_replica_uid):
+        return self._put_lock(request, source_replica_uid)
+
+    @app.route(LOCK_RESOURCE_URI, methods=[DELETE])
+    def release_lock(self, request, source_replica_uid):
+        return self._put_lock(request, source_replica_uid)
 
 
 if __name__ == '__main__':

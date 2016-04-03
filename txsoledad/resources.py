@@ -15,7 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+Resources that compose the txsoledad http API.
 
+Partially compatible with the original u1db protocol.
 """
 import json
 
@@ -107,10 +109,14 @@ class Document(object):
         d.addErrback(_nodocEb)
         return d
 
+    # TODO
     def _update_doc(self, request, dbname, doc_id):
         def _update_doc_cb(result):
             response = {'result': 'ok', 'action': 'PUT'}
             return json.dumps(response)
+
+        # TODO if old_rev is None: --> create, status == 201
+        # else: status == 200
 
         _set_json_ctype(request)
         _body = json.loads(request.content.getvalue())
@@ -121,10 +127,16 @@ class Document(object):
         d.addCallback(_update_doc_cb)
         return d
 
+    # TODO I need revision to delete??
+    # Should I get it from a get-doc first ?
     def _delete_doc(self, request, dbname, doc_id):
         _set_json_ctype(request)
-        response = {'result': 'NOT IMPLEMENTED', 'action': 'DELETE'}
-        return json.dumps(response)
+        d = self.state.db.deleteDoc(
+            dbname, docId=unicode(doc_id),
+            revision='')
+        d.addCallback(_successCb, 'delete-doc')
+        d.addErrback(_failureEb, 'delete-doc')
+        return d
 
 
 class Sync(object):
@@ -135,21 +147,27 @@ class Sync(object):
     # .replica_uid
     # .sync_exchange_class -- pluggable!!
 
-    # GET
+    # GET TODO
     def _start_sync(self, request, dbname, source_replica_uid):
         _set_json_ctype(request)
+        # TODO 1. get sync info for source replica uid
+        # result = self.get_target().get_sync_info(self.source_replica_uid)
+        # XXX this is stored in soledad state.ServerSyncState
+
+
+        # TODO 2. send a json with all the sync info to client, this
+        # will start the synchronization dance...
+        #self.responder.send_response_json(
+        #    target_replica_uid=result[0], target_replica_generation=result[1],
+            #target_replica_transaction_id=result[2],
+            #source_replica_uid=self.source_replica_uid,
+            #source_replica_generation=result[3],
+            #source_transaction_id=result[4])
         response = {'dbname': dbname, 'action': 'GET',
                     'sync-from': source_replica_uid}
         return json.dumps(response)
 
-    # PUT
-    def _put_sync(self, request, dbname, source_replica_uid):
-        _set_json_ctype(request)
-        response = {'dbname': dbname, 'action': 'PUT',
-                    'sync-from': source_replica_uid}
-        return json.dumps(response)
-
-    # POST
+    # POST TODO 
     def _post_sync(self, request, dbname, source_replica_uid):
         _set_json_ctype(request)
         args = request.args
@@ -163,6 +181,13 @@ class Sync(object):
         else:
             pass
         response = {'dbname': dbname, 'action': 'POST',
+                    'sync-from': source_replica_uid}
+        return json.dumps(response)
+
+    # PUT TODO
+    def _put_sync(self, request, dbname, source_replica_uid):
+        _set_json_ctype(request)
+        response = {'dbname': dbname, 'action': 'PUT',
                     'sync-from': source_replica_uid}
         return json.dumps(response)
 
