@@ -1,2 +1,4 @@
 [ ] Implement Locking mechanism.
     - Can we have a distributed consensus version?
+[ ] Implement Authentication Middleware.
+    - Have a way of bypassing it for local tests.

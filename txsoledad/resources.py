@@ -21,7 +21,11 @@ Partially compatible with the original u1db protocol.
 """
 import json
 
+# TODO get embedded u1db instead
 import u1db
+from u1db import errors as u1db_errors
+
+# TODO use _utils
 
 
 class Global(object):
@@ -86,18 +90,23 @@ class Document(object):
     def _get_doc(self, request, dbname, doc_id):
 
         def _getdocCb(result):
+            #response = {'get-doc': 'ok', 'result': doc}
             doc = result
-            response = {'get-doc': 'ok', 'result': doc}
+            response = doc['content']
+
             request.setHeader(
                 'x-u1db-rev', doc.get('rev', ''))
             request.setHeader(
-                'x-u1db-has-conflicts', doc.get('has_conflicts', '')) 
+                'x-u1db-has-conflicts', doc.get('has_conflicts', 'false')) 
             return json.dumps(response)
 
         def _nodocEb(failure):
-            response = {'get-doc': 'no', 'error': json.loads(failure.value.message)}
+            response = {'get-doc': 'no', 
+                        'error': u1db_errors.DocumentDoesNotExist.wire_description,
+                        'error-couch': json.loads(failure.value.message)}
             request.setHeader('x-u1db-rev', '')
             request.setHeader('x-u1db-has-conflicts', 'false')
+            request.setResponseCode(404)
             return json.dumps(response)
 
         include_deleted = _parse_bool(request.args.get('include_deleted'))
@@ -109,18 +118,19 @@ class Document(object):
         d.addErrback(_nodocEb)
         return d
 
-    # TODO
+    # TODO ---- complete return codes (rev)
     def _update_doc(self, request, dbname, doc_id):
-        def _update_doc_cb(result):
-            response = {'result': 'ok', 'action': 'PUT'}
-            return json.dumps(response)
-
         # TODO if old_rev is None: --> create, status == 201
         # else: status == 200
 
+        def _update_doc_cb(result):
+            response = {'result': 'ok'}
+            request.setResponseCode(201)
+            return json.dumps(response)
+
         _set_json_ctype(request)
         _body = json.loads(request.content.getvalue())
-        body = {"content": _body['body']}
+        body = {"content": _body}
         d = self.state.db.saveDoc(
             dbname, json.dumps(body),
             docId=unicode(doc_id))
@@ -138,61 +148,6 @@ class Document(object):
         d.addErrback(_failureEb, 'delete-doc')
         return d
 
-
-class Sync(object):
-
-    # needs:
-    # .responder
-    # .state
-    # .replica_uid
-    # .sync_exchange_class -- pluggable!!
-
-    # GET TODO
-    def _start_sync(self, request, dbname, source_replica_uid):
-        _set_json_ctype(request)
-        # TODO 1. get sync info for source replica uid
-        # result = self.get_target().get_sync_info(self.source_replica_uid)
-        # XXX this is stored in soledad state.ServerSyncState
-
-
-        # TODO 2. send a json with all the sync info to client, this
-        # will start the synchronization dance...
-        #self.responder.send_response_json(
-        #    target_replica_uid=result[0], target_replica_generation=result[1],
-            #target_replica_transaction_id=result[2],
-            #source_replica_uid=self.source_replica_uid,
-            #source_replica_generation=result[3],
-            #source_transaction_id=result[4])
-        response = {'dbname': dbname, 'action': 'GET',
-                    'sync-from': source_replica_uid}
-        return json.dumps(response)
-
-    # POST TODO 
-    def _post_sync(self, request, dbname, source_replica_uid):
-        _set_json_ctype(request)
-        args = request.args
-        last_known_generation = args.get('last_known_generation')
-        last_known_trans_id = args.get('last_known_trans_id')
-        ensure = args.get('ensure')
-
-        # XXX get database etc
-        if ensure:
-            db, self.replica_uid = foobar
-        else:
-            pass
-        response = {'dbname': dbname, 'action': 'POST',
-                    'sync-from': source_replica_uid}
-        return json.dumps(response)
-
-    # PUT TODO
-    def _put_sync(self, request, dbname, source_replica_uid):
-        _set_json_ctype(request)
-        response = {'dbname': dbname, 'action': 'PUT',
-                    'sync-from': source_replica_uid}
-        return json.dumps(response)
-
-    def get_target(self):
-        return self.state.open_database(self.dbname).get_sync_target()
 
 
 def _set_json_ctype(request):

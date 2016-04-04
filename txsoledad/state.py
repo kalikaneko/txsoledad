@@ -15,16 +15,23 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-Data structures that keep state on the server.
+Data structures that keep ServerState, using asynchronous couchdb connections
+as a backend.
 """
+# FIXME see legacy leap.soledad.common.couch.state
 
 import paisley
+
+from backend_couch import CouchDatabase
 
 
 class ServerState(object):
 
     def __init__(self):
         self.db = paisley.CouchDB('localhost')
+
+    def open_database(self, dbname):
+        return CouchDatabase.open_database(dbname, create=False, ensure_ddocs=False)
 
     def create_dabase(self, dbname):
         return self.db.createDB(dbname)

@@ -13,7 +13,8 @@ TO-DO:
 from klein import Klein
 
 from resources import Global, Database, AllDocs
-from resources import Documents, Document, Sync
+from resources import Documents, Document
+from sync_resource import Sync
 from lock_resource import Lock
 
 from state import ServerState
@@ -23,6 +24,8 @@ GET = 'GET'
 POST = 'POST'
 PUT = 'PUT'
 DELETE = 'DELETE'
+
+SHARED_DB_NAME = 'shared'
 
 
 class HTTPApp(Global, Database, AllDocs, Documents, Document, Sync, Lock):
@@ -36,7 +39,9 @@ class HTTPApp(Global, Database, AllDocs, Documents, Document, Sync, Lock):
     SYNC_RESOURCE_URI = (
         '/<string:dbname>/sync-from'
         '/<string:source_replica_uid>')
-    LOCK_RESOURCE_URI = '/shared/lock/<string:source_replica_uid>'
+    LOCK_RESOURCE_URI = (
+        '/%s/lock/<string:source_replica_uid>' %
+        (SHARED_DB_NAME,))
 
     def __init__(self):
         self.state = ServerState()
@@ -50,7 +55,7 @@ class HTTPApp(Global, Database, AllDocs, Documents, Document, Sync, Lock):
     # Database resource
     # XXX soledad *SHOULDNT* have privileges to modify databases,
     # but getting this here for API completion. It might be useful during
-    # tests.
+    # local tests.
 
     @app.route(DB_RESOURCE_URI, methods=[GET])
     def create_database(self, request, dbname):
