@@ -16,6 +16,7 @@ from resources import Global, Database, AllDocs
 from resources import Documents, Document
 from sync_resource import Sync
 from lock_resource import Lock
+from shared_resource import Shared
 
 from state import ServerState
 
@@ -28,7 +29,8 @@ DELETE = 'DELETE'
 SHARED_DB_NAME = 'shared'
 
 
-class HTTPApp(Global, Database, AllDocs, Documents, Document, Sync, Lock):
+class HTTPApp(Global, Database, AllDocs, Documents, Document, Sync, Lock,
+              Shared):
 
     app = Klein()
 
@@ -42,9 +44,20 @@ class HTTPApp(Global, Database, AllDocs, Documents, Document, Sync, Lock):
     LOCK_RESOURCE_URI = (
         '/%s/lock/<string:source_replica_uid>' %
         (SHARED_DB_NAME,))
+    SHARED_DOC = '/%s/doc/<string:shared_doc>' % SHARED_DB_NAME
 
     def __init__(self):
         self.state = ServerState()
+
+    # Shared db resource
+
+    @app.route(SHARED_DOC, methods=[GET])
+    def get_shared_doc(self, request, shared_doc):
+        return self._get_shared_doc(request, shared_doc)
+
+    @app.route(SHARED_DOC, methods=[PUT])
+    def put_shared_doc(self, request, shared_doc):
+        return self._put_shared_doc(request, shared_doc)
 
     # Global resource
 

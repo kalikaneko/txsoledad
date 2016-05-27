@@ -18,16 +18,19 @@
 A Soleadd/U1DB backend with some modifications regarding the original u1db one.
 """
 # FIXME -- legacy: leap.soledad.common.backend
+# TODO use embedded l2db
+# TODO separate the methods that DO NEED deferreds.
 
 from twisted.internet import defer
-
-# TODO use embedded u1db..
+from twisted.python import log
 
 from u1db import vectorclock
 from u1db.errors import RevisionConflict, InvalidDocId, ConflictedDoc
+from u1db.errors import InvalidTransactionId, InvalidGeneration
 from u1db.errors import DocumentDoesNotExist, DocumentAlreadyDeleted
 from u1db.backends import CommonBackend
 from u1db.backends import CommonSyncTarget
+from u1db.vectorclock import VectorClockRev
 
 from leap.soledad.common.document import ServerDocument
 
@@ -51,7 +54,6 @@ class SoledadBackend(CommonBackend):
         :param replica_uid: an optional unique replica identifier
         :type replica_uid: str
         """
-        print "GOT DATABASE", database
         # save params
         self._factory = ServerDocument
         self._real_replica_uid = None
@@ -123,46 +125,6 @@ class SoledadBackend(CommonBackend):
         self._database.close()
         return True
 
-    def __del__(self):
-        """
-        Close the database upon garbage collection.
-        """
-        self.close()
-
-
-    # XXX the property game has to be played differently,
-    # get_replica will be a deferred.
-    #def _set_replica_uid(self, replica_uid):
-        #"""
-        #Force the replica uid to be set.
-#
-        #:param replica_uid: The new replica uid.
-        #:type replica_uid: str
-        #"""
-        #self._database.set_replica_uid(replica_uid)
-        #self._real_replica_uid = replica_uid
-        #self.cache['replica_uid'] = self._real_replica_uid
-#
-    #def _get_replica_uid(self):
-        #"""
-        #Get the replica uid.
-#
-        #:return: The replica uid.
-        #:rtype: str
-        #"""
-        #if self._real_replica_uid is not None:
-            #self.cache['replica_uid'] = self._real_replica_uid
-            #return self._real_replica_uid
-        #if 'replica_uid' in self.cache:
-            #return self.cache['replica_uid']
-        #self._real_replica_uid = self._database.get_replica_uid()
-        #self._set_replica_uid(self._real_replica_uid)
-        #return self._real_replica_uid
-#
-    #_replica_uid = property(_get_replica_uid, _set_replica_uid)
-#
-    #replica_uid = property(_get_replica_uid)
-
     def get_replica_uid(self):
         # TODO can add a callback here that adds to cache
         d = self._database.get_replica_uid()
@@ -177,7 +139,9 @@ class SoledadBackend(CommonBackend):
 
         :raise SoledadError: Raised by database on operation failure
         """
-        return self._get_generation_info()[0]
+        d = self._get_generation_info()
+        d.addCallback(lambda info: info[0])
+        return d
 
     def _get_generation_info(self):
         """
@@ -188,12 +152,12 @@ class SoledadBackend(CommonBackend):
 
         :raise SoledadError: Raised by database on operation failure
         """
-        #cur_gen, newest_trans_id = self._database.get_generation_info()
-        #return (cur_gen, newest_trans_id)
-        #def format_gen_info(gen_info):
-            
+        # cur_gen, newest_trans_id = self._database.get_generation_info()
+        # return (cur_gen, newest_trans_id)
+        # def format_gen_info(gen_info):
+        # d.addCallback(format_gen_info)
+
         d = self._database.get_generation_info()
-        #d.addCallback(format_gen_info)
         return d
 
     def _get_trans_id_for_gen(self, generation):
@@ -238,6 +202,7 @@ class SoledadBackend(CommonBackend):
         """
         return self._database.get_doc(doc_id, check_for_conflicts)
 
+    @defer.inlineCallbacks
     def get_doc(self, doc_id, include_deleted=False):
         """
         Get the JSON string for the given document.
@@ -252,12 +217,12 @@ class SoledadBackend(CommonBackend):
         :return: A document object.
         :rtype: ServerDocument.
         """
-        doc = self._get_doc(doc_id, check_for_conflicts=True)
+        doc = yield self._get_doc(doc_id, check_for_conflicts=True)
         if doc is None:
-            return None
+            defer.returnValue(None)
         if doc.is_tombstone() and not include_deleted:
-            return None
-        return doc
+            defer.returnValue(None)
+        defer.returnValue(doc)
 
     def get_all_docs(self, include_deleted=False):
         """
@@ -288,8 +253,9 @@ class SoledadBackend(CommonBackend):
         :param doc: The document to be put.
         :type doc: ServerDocument
         """
-        self._database.save_document(old_doc, doc,
-                                     self._allocate_transaction_id())
+        d = self._database.save_document(
+            old_doc, doc, self._allocate_transaction_id())
+        return d
 
     def put_doc(self, doc):
         """
@@ -413,16 +379,17 @@ class SoledadBackend(CommonBackend):
         if other_replica_uid in self.cache:
             return self.cache[other_replica_uid]
 
-        # XXX DEBUG --------------------------------------------------------
-        # print self._database
-        #  ------------------------------------------------------------------
         def add_to_cache(replica_info):
             gen, trans_id = replica_info
             self.cache[other_replica_uid] = (gen, trans_id)
             return replica_info
 
+        def err(info):
+            log.err(info)
+
         d = self._database.get_replica_gen_and_trans_id(other_replica_uid)
         d.addCallback(add_to_cache)
+        d.addErrback(err)
         return d
 
     def _set_replica_gen_and_trans_id(self, other_replica_uid,
@@ -444,11 +411,11 @@ class SoledadBackend(CommonBackend):
         :type other_transaction_id: str
         """
         if other_replica_uid is not None and other_generation is not None:
-            self.cache[other_replica_uid] = (other_generation,
-                                             other_transaction_id)
-            self._database.set_replica_gen_and_trans_id(other_replica_uid,
-                                                        other_generation,
-                                                        other_transaction_id)
+            self.cache[other_replica_uid] = (
+                other_generation, other_transaction_id)
+            d = self._database.set_replica_gen_and_trans_id(
+                other_replica_uid, other_generation, other_transaction_id)
+            return d
 
     def _do_set_replica_gen_and_trans_id(
             self, other_replica_uid, other_generation, other_transaction_id):
@@ -463,13 +430,17 @@ class SoledadBackend(CommonBackend):
                                      generation.
         :type other_transaction_id: str
         """
-        function = self._set_replica_gen_and_trans_id
+        fun = self._set_replica_gen_and_trans_id
         args = [other_replica_uid, other_generation, other_transaction_id]
-        callback = lambda: function(*args)
-        if self.batching:
-            self.after_batch_callbacks['set_source_info'] = callback
-        else:
-            callback()
+        d = fun(*args)
+        return d
+
+        # FIXME ---------- enable batching
+        # callback = lambda: function(*args)
+        # if self.batching:
+        #   self.after_batch_callbacks['set_source_info'] = callback
+        # else:
+        #   callback()
 
     def _force_doc_sync_conflict(self, doc):
         """
@@ -528,6 +499,7 @@ class SoledadBackend(CommonBackend):
             # to the current document.
             doc.set_conflicts(cur_doc.get_conflicts())
 
+    @defer.inlineCallbacks
     def _put_doc_if_newer(self, doc, save_conflict, replica_uid, replica_gen,
                           replica_trans_id='', number_of_docs=None,
                           doc_idx=None, sync_id=None):
@@ -584,15 +556,84 @@ class SoledadBackend(CommonBackend):
         """
         if not isinstance(doc, ServerDocument):
             doc = self._factory(doc.doc_id, doc.rev, doc.get_json())
-        my_doc = self._get_doc(doc.doc_id, check_for_conflicts=True)
+        my_doc = yield self._get_doc(doc.doc_id, check_for_conflicts=True)
         if my_doc:
             doc.set_conflicts(my_doc.get_conflicts())
-        return CommonBackend._put_doc_if_newer(self, doc, save_conflict,
-                                               replica_uid, replica_gen,
-                                               replica_trans_id)
+
+        put = yield self.__put_doc_if_newer(
+            doc, save_conflict, replica_uid, replica_gen,
+            replica_trans_id)
+        defer.returnValue(put)
+
+    # XXX Original CommonBackend._put_doc_if_newer
+    # FIXME this is ugly. Converge the two implementations.
+    @defer.inlineCallbacks
+    def __put_doc_if_newer(self, doc, save_conflict, replica_uid, replica_gen,
+                           replica_trans_id=''):
+        cur_doc = yield self._get_doc(doc.doc_id)
+        doc_vcr = VectorClockRev(doc.rev)
+        if cur_doc is None:
+            cur_vcr = VectorClockRev(None)
+        else:
+            cur_vcr = VectorClockRev(cur_doc.rev)
+        yield self._validate_source(replica_uid, replica_gen,
+                                    replica_trans_id)
+        if doc_vcr.is_newer(cur_vcr):
+            rev = doc.rev
+            self._prune_conflicts(doc, doc_vcr)
+            if doc.rev != rev:
+                # conflicts have been autoresolved
+                state = 'superseded'
+            else:
+                state = 'inserted'
+            yield self._put_and_update_indexes(cur_doc, doc)
+        elif doc.rev == cur_doc.rev:
+            # magical convergence
+            state = 'converged'
+        elif cur_vcr.is_newer(doc_vcr):
+            # Don't add this to seen_ids, because we have something newer,
+            # so we should send it back, and we should not generate a
+            # conflict
+            state = 'superseded'
+        elif cur_doc.same_content_as(doc):
+            # the documents have been edited to the same thing at both ends
+            doc_vcr.maximize(cur_vcr)
+            doc_vcr.increment(self._replica_uid)
+            doc.rev = doc_vcr.as_str()
+            yield self._put_and_update_indexes(cur_doc, doc)
+            state = 'superseded'
+        else:
+            state = 'conflicted'
+            if save_conflict:
+                self._force_doc_sync_conflict(doc)
+        if replica_uid is not None and replica_gen is not None:
+            yield self._do_set_replica_gen_and_trans_id(
+                replica_uid, replica_gen, replica_trans_id)
+        gen = yield self._get_generation()
+        defer.returnValue(tuple([state, gen]))
+
+    @defer.inlineCallbacks
+    def _validate_source(self, other_replica_uid, other_generation,
+                         other_transaction_id):
+        """Validate the new generation and transaction id.
+
+        ot7her_generation must be greater than what we have stored for this
+        replica, *or* it must be the same and the transaction_id must be the
+        same as well.
+        """
+        (old_generation,
+         old_transaction_id) = yield self._get_replica_gen_and_trans_id(
+             other_replica_uid)
+        if other_generation < old_generation:
+            raise InvalidGeneration
+        if other_generation > old_generation:
+            return
+        if other_transaction_id == old_transaction_id:
+            return
+        raise InvalidTransactionId
 
     def _put_and_update_indexes(self, cur_doc, doc):
-        self._put_doc(cur_doc, doc)
+        return self._put_doc(cur_doc, doc)
 
     def get_docs(self, doc_ids, check_for_conflicts=True,
                  include_deleted=False):
@@ -650,14 +691,12 @@ class SoledadSyncTarget(CommonSyncTarget):
     Functionality for using a SoledadBackend as a synchronization target.
     """
 
-
     def get_sync_info(self, source_replica_uid):
 
         def format_sync_info(result):
             replica_info, own_info, replica_uid = result
             source_gen, source_trans_id = replica_info
             my_gen, my_trans_id = own_info
-            #print "RETURNING >>>", my_gen, my_trans_id, source_gen, source_trans_id
             return (replica_uid,
                     my_gen, my_trans_id,
                     source_gen, source_trans_id)
@@ -668,7 +707,6 @@ class SoledadSyncTarget(CommonSyncTarget):
         d = defer.gatherResults([d1, d2, d3])
         d.addCallback(format_sync_info)
         return d
-
 
     def record_sync_info(self, source_replica_uid, source_replica_generation,
                          source_replica_transaction_id):

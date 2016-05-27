@@ -1,5 +1,6 @@
 import os
-from twisted.internet import reactor
+from twisted.internet import defer, reactor
+from twisted.python import log
 from leap.soledad.client import Soledad
 
 
@@ -30,11 +31,16 @@ def notify_when_ready(result):
     reactor.stop()
 
 sol = _get_soledad_instance(
-    'defd3db2cc8a749d12a9b56a638b9993', 'pass', '/tmp/',
+    'deadbeef61', 'pass', '/tmp/',
     'http://localhost:2323', '', '')
-sol.create_doc({'test': 42})
 
-d = sol.sync()
+d1 = sol.create_doc({'test': 1})
+d2 = sol.create_doc({'test': 2})
+d3 = sol.create_doc({'test': 3})
+
+d = defer.gatherResults([d1, d2, d3])
+d.addCallback(lambda _: sol.sync())
 d.addCallback(notify_when_ready)
+d.addErrback(log.err)
 
 reactor.run()

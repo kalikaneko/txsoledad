@@ -1,0 +1,110 @@
+
+####
+T 127.0.0.1:56010 -> 127.0.0.1:2020 [AP]
+GET /user-deadbeef23/sync-from/58a0c6c15e1c43b997c69a26bdf474b8 HTTP/1.1.
+Host: localhost:2020.
+Authorization: Token ZGVhZGJlZWYyMzo=.
+.
+
+##
+T 127.0.0.1:2020 -> 127.0.0.1:56010 [AP]
+HTTP/1.1 200 OK.
+Date: Wed, 25 May 2016 02:26:48 GMT.
+Content-Length: 316.
+Cache-Control: no-cache.
+Content-Type: application/json.
+Server: TwistedWeb/15.4.0.
+.
+{"source_transaction_id": "T-b3ecf2bbece542c59923bb296c6a086a",
+"target_replica_generation": 1, "target_replica_transaction_id":
+"T-b90384c2c004483496f54f554767bf09", "source_replica_generation": 1,
+"target_replica_uid": "ef9297f743264d0491eea5352997eeca", "source_replica_uid":
+"58a0c6c15e1c43b997c69a26bdf474b8"}.
+
+##
+T 127.0.0.1:56010 -> 127.0.0.1:2020 [AP]
+POST /user-deadbeef23/sync-from/58a0c6c15e1c43b997c69a26bdf474b8 HTTP/1.1.
+Content-Length: 626.
+Host: localhost:2020.
+Content-Type: application/x-soledad-sync-put.
+Authorization: Token ZGVhZGJlZWYyMzo=.
+.
+[.
+{"sync_id": "9900e18b-6fa1-4d3a-a785-c100736f991c", "last_known_trans_id":
+"T-b90384c2c004483496f54f554767bf09", "last_known_generation": 1, "ensure":
+false},.
+{"rev": "58a0c6c15e1c43b997c69a26bdf474b8:1", "gen": 2, "content":
+"{\"_mac_method\": \"hmac\", \"_enc_scheme\": \"symkey\", \"_enc_json\":
+\"fa00552a4edd0143f5b6400a\", \"_mac\":
+\"5b4c022f1d64906a839c3aefda1f9b3c6432a3d8b43a030eec9c19dd9c086267\",
+\"_enc_iv\": \"zB5CgtpFpKTnIbsqkCcXog==\\n\", \"_enc_method\":
+\"aes-256-ctr\"}", "doc_idx": 1, "id": "D-59641bccbdba4530976d98e1bdd70021",
+"trans_id": "T-40db9b02ec6c4f9da22350c4e41ebf53", "number_of_docs": 1}.
+]
+##
+T 127.0.0.1:2020 -> 127.0.0.1:56010 [AP]
+HTTP/1.1 200 OK.
+Transfer-Encoding: chunked.
+Date: Wed, 25 May 2016 02:26:49 GMT.
+Cache-Control: no-cache.
+Content-Type: application/x-soledad-sync-response.
+Server: TwistedWeb/15.4.0.
+.
+1.
+[.
+
+##
+T 127.0.0.1:2020 -> 127.0.0.1:56010 [AP]
+2.
+.
+.
+51.
+{"new_transaction_id": "T-c7954a3bb70c456c80a077d4f069c915", "new_generation":
+2}.
+5.
+.
+].
+.
+0.
+.
+
+##
+T 127.0.0.1:56010 -> 127.0.0.1:2020 [AP]
+POST /user-deadbeef23/sync-from/58a0c6c15e1c43b997c69a26bdf474b8 HTTP/1.1.
+Content-Length: 181.
+Host: localhost:2020.
+Content-Type: application/x-soledad-sync-get.
+Authorization: Token ZGVhZGJlZWYyMzo=.
+.
+[.
+{"sync_id": "9900e18b-6fa1-4d3a-a785-c100736f991c", "last_known_trans_id":
+"T-b90384c2c004483496f54f554767bf09", "last_known_generation": 1, "ensure":
+false},.
+{"received": 0}.
+]
+##
+T 127.0.0.1:2020 -> 127.0.0.1:56010 [AP]
+HTTP/1.1 200 OK.
+Transfer-Encoding: chunked.
+Date: Wed, 25 May 2016 02:26:49 GMT.
+Cache-Control: no-cache.
+Content-Type: application/x-u1db-sync-response.
+Server: TwistedWeb/15.4.0.
+.
+1.
+[.
+2.
+.
+.
+69.
+{"new_transaction_id": "T-c7954a3bb70c456c80a077d4f069c915", "new_generation":
+2, "number_of_changes": 0}.
+5.
+.
+].
+.
+0.
+.
+
+####
+

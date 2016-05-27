@@ -1,6 +1,13 @@
-[ ] Implement Locking mechanism.
-    - Can we have a distributed consensus version?
+Minimal 
+[x] Uploads
+[x] Downloads
+[x] fix content: null
+[ ] Enable batching
+
+Advanced
 [ ] Implement Authentication Middleware.
     - Have a way of bypassing it for local tests.
 [ ] Use txaio
 [ ] drop klein
+
+

@@ -33,6 +33,9 @@ class ServerState(object):
     def open_database(self, dbname):
         return CouchDatabase.open_database(dbname, create=False, ensure_ddocs=False)
 
+    def open_shared_database(self):
+        return paisley.CouchDB('localhost', dbName='shared')
+
     def create_dabase(self, dbname):
         return self.db.createDB(dbname)
 
