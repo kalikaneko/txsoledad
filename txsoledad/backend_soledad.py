@@ -15,22 +15,20 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-A Soleadd/U1DB backend with some modifications regarding the original u1db one.
+A Soledad/U1DB backend with some modifications regarding the original u1db one.
 """
 # FIXME -- legacy: leap.soledad.common.backend
-# TODO use embedded l2db
 # TODO separate the methods that DO NEED deferreds.
 
 from twisted.internet import defer
 from twisted.python import log
 
-from u1db import vectorclock
-from u1db.errors import RevisionConflict, InvalidDocId, ConflictedDoc
-from u1db.errors import InvalidTransactionId, InvalidGeneration
-from u1db.errors import DocumentDoesNotExist, DocumentAlreadyDeleted
-from u1db.backends import CommonBackend
-from u1db.backends import CommonSyncTarget
-from u1db.vectorclock import VectorClockRev
+from leap.soledad.common.l2db import vectorclock
+from leap.soledad.common.l2db.errors import RevisionConflict, InvalidDocId, ConflictedDoc
+from leap.soledad.common.l2db.errors import InvalidTransactionId, InvalidGeneration
+from leap.soledad.common.l2db.errors import DocumentDoesNotExist, DocumentAlreadyDeleted
+from leap.soledad.common.l2db.backends import CommonBackend
+from leap.soledad.common.l2db.backends import CommonSyncTarget
 
 from leap.soledad.common.document import ServerDocument
 
@@ -571,11 +569,11 @@ class SoledadBackend(CommonBackend):
     def __put_doc_if_newer(self, doc, save_conflict, replica_uid, replica_gen,
                            replica_trans_id=''):
         cur_doc = yield self._get_doc(doc.doc_id)
-        doc_vcr = VectorClockRev(doc.rev)
+        doc_vcr = vectorclock.VectorClockRev(doc.rev)
         if cur_doc is None:
-            cur_vcr = VectorClockRev(None)
+            cur_vcr = vectorclock.VectorClockRev(None)
         else:
-            cur_vcr = VectorClockRev(cur_doc.rev)
+            cur_vcr = vectorclock.VectorClockRev(cur_doc.rev)
         yield self._validate_source(replica_uid, replica_gen,
                                     replica_trans_id)
         if doc_vcr.is_newer(cur_vcr):
@@ -666,7 +664,7 @@ class SoledadBackend(CommonBackend):
         :type doc: ServerDocument
         :param doc_vcr: A vector clock representing the current document's
                         revision.
-        :type doc_vcr: u1db.vectorclock.VectorClock
+        :type doc_vcr: l2db.vectorclock.VectorClock
         """
         if doc.has_conflicts:
             autoresolved = False

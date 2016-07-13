@@ -17,11 +17,11 @@
 """
 Server side synchronization infrastructure.
 """
-# TODO -- the skeleton for this should be in soledad itself.
+# TODO -- the skeleton for this should PROBABLY be in soledad itself.
 
 from twisted.internet import defer
 
-from u1db import sync
+from leap.soledad.common.l2db import sync
 
 from leap.soledad.server.state import ServerSyncState
 
@@ -124,7 +124,7 @@ class SyncExchange(sync.SyncExchange):
             return_doc_cb(doc, gen, trans_id)
 
     def batched_insert_from_source(self, entries, sync_id):
-        # FIXME --- enable batch
+        # FIXME --- enable batch !!!
         self._db.batch_start()
         for entry in entries:
             doc, gen, trans_id, number_of_docs, doc_idx = entry

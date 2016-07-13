@@ -31,14 +31,15 @@ def notify_when_ready(result):
     reactor.stop()
 
 sol = _get_soledad_instance(
-    'deadbeef61', 'pass', '/tmp/',
-    'http://localhost:2323', '', '')
+    'deadbeef', 'pass', '/tmp/',
+    'http://localhost:2020', '', '')
 
 d1 = sol.create_doc({'test': 1})
-d2 = sol.create_doc({'test': 2})
-d3 = sol.create_doc({'test': 3})
+#d2 = sol.create_doc({'test': 2})
+#d3 = sol.create_doc({'test': 3})
+#d = defer.gatherResults([d1, d2, d3])
+d = defer.gatherResults([d1])
 
-d = defer.gatherResults([d1, d2, d3])
 d.addCallback(lambda _: sol.sync())
 d.addCallback(notify_when_ready)
 d.addErrback(log.err)

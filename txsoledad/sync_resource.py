@@ -23,7 +23,7 @@ from twisted.internet import defer
 import _utils
 from sync import SyncExchange
 
-from u1db import Document
+from leap.soledad.common.l2db import Document
 
 
 class SyncExchangeCollection(object):

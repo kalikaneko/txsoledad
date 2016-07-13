@@ -7,7 +7,9 @@ Minimal
 Advanced
 [ ] Implement Authentication Middleware.
     - Have a way of bypassing it for local tests.
+    - Cache them
 [ ] Use txaio
 [ ] drop klein
+[ ] drop inlinedeferreds
 
 

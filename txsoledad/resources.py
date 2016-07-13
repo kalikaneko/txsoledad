@@ -21,9 +21,8 @@ Partially compatible with the original u1db protocol.
 """
 import json
 
-# TODO get embedded u1db instead
-import u1db
-from u1db import errors as u1db_errors
+from leap.soledad.common import l2db
+from leap.soledad.common.l2db import errors as l2db_errors
 
 # TODO use _utils
 
@@ -33,7 +32,7 @@ class Global(object):
     def _info(self, request):
         _set_json_ctype(request)
         response = {
-            'u1db_version': u1db.__version__,
+            'l2db_version': l2db.__version__,
             'soledad_version': '0.10.0'}
         return json.dumps(response)
 
@@ -102,7 +101,7 @@ class Document(object):
 
         def _nodocEb(failure):
             response = {'get-doc': 'no', 
-                        'error': u1db_errors.DocumentDoesNotExist.wire_description,
+                        'error': l2db_errors.DocumentDoesNotExist.wire_description,
                         'error-couch': json.loads(failure.value.message)}
             request.setHeader('x-u1db-rev', '')
             request.setHeader('x-u1db-has-conflicts', 'false')

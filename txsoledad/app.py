@@ -1,5 +1,5 @@
 """
-Experimental module to expose u1db http app using twisted.
+Implementation of the l2db http sync protocol using twisted.
 TO-DO:
     [X] stub all the REST resources in the api.
     [ ] correctly get all the possible params
